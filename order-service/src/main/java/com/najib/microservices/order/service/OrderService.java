@@ -5,8 +5,10 @@ import com.najib.microservices.order.dto.OrderRequest;
 import com.najib.microservices.order.event.OrderPlacedEvent;
 import com.najib.microservices.order.model.Order;
 import com.najib.microservices.order.repository.OrderRepository;
+import groovy.util.logging.Slf4j;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +18,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 public class OrderService {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
+
     private final OrderRepository orderRepository;
     private final InventoryClient inventoryClient;
     private final KafkaTemplate<String, OrderPlacedEvent> kafkaTemplate;
@@ -31,7 +36,11 @@ public class OrderService {
             order.setQuantity(orderRequest.quantity());
             orderRepository.save(order);
 
-            OrderPlacedEvent orderPlacedEvent = new OrderPlacedEvent(order.getOrderNumber(), orderRequest.userDetails().email());
+            OrderPlacedEvent orderPlacedEvent = new OrderPlacedEvent();
+            orderPlacedEvent.setOrderNumber(order.getOrderNumber());
+            orderPlacedEvent.setEmail(orderRequest.userDetails().email());
+            orderPlacedEvent.setFirstName(orderRequest.userDetails().firstName());
+            orderPlacedEvent.setLastName(orderRequest.userDetails().lastName());
             log.info("Start - Sending OrderPlacedEvent {} to Kafka topic order-placed", orderPlacedEvent);
             kafkaTemplate.send("order-placed", orderPlacedEvent);
             log.info("End - Sending OrderPlacedEvent {} to Kafka topic order-placed", orderPlacedEvent);
